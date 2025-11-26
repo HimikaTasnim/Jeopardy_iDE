@@ -359,18 +359,9 @@ function continueToNextQuestion() {
   const currentCatIndex = categories.indexOf(currentQ.category);
   const currentRow = currentQ.points / 100;
 
-  // look for next in same category
-  for (let i = currentRow + 1; i <= 5; i++) {
-    const nextQ = questions.find(q =>
-      q.category === currentQ.category && q.points === i * 100 && !q.answered
-    );
-    if (nextQ && canOpenQuestion(nextQ)) {
-      return openQuestion(questions.indexOf(nextQ));
-    }
-  }
 
   // otherwise go to next category
-  for (let cat = currentCatIndex + 1; cat < categories.length; cat++) {
+  for (let cat = currentCatIndex ; cat < categories.length; cat++) {
     for (let row = 1; row <= 5; row++) {
       const nextQ = questions.find(q =>
         q.category === categories[cat] && q.points === row * 100 && !q.answered
