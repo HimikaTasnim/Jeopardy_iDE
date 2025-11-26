@@ -341,14 +341,22 @@ function continueToNextQuestion() {
   exitToBoard();
 }
 
-function showEndScreen() {
-  // Hide everything else
+function exitToBoard() {
+  // Clear all visible sections
   questionScreen.style.display = "none";
-  board.style.display = "none";
+  board.style.display = "block"; // keep it visible to show the message
 
-  // Show the end screen
-  const endScreen = document.getElementById('end-screen');
-  endScreen.style.display = "block";
+  // Clear the board content completely
+  board.innerHTML = "";
+
+  // Show the End of Game message
+  const endMsg = document.createElement("div");
+  endMsg.style.textAlign = "center";
+  endMsg.style.fontSize = "2rem";
+  endMsg.style.marginTop = "50px";
+  endMsg.innerText = "🎉 End of Game 🎉";
+
+  board.appendChild(endMsg);
 }
 
 
@@ -384,7 +392,7 @@ modalNext.onclick = () => {
     closeModal();
 
     setTimeout(() => {
-      if (isLastQuestion(currentIndex)) showEndScreen();
+      if (isLastQuestion(currentIndex)) exitToBoard();
       else continueToNextQuestion();
     }, 50);
   }
