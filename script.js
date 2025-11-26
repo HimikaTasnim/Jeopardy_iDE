@@ -360,7 +360,7 @@ function continueToNextQuestion() {
   const currentRow = currentQ.points / 100;
 
   // look for next in same category
-  for (let i = currentRow + 1; i <= 5; i++) {
+  for (let i = currentRow + 1; i <= 6; i++) {
     const nextQ = questions.find(q =>
       q.category === currentQ.category && q.points === i * 100 && !q.answered
     );
