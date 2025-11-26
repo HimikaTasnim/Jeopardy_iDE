@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Jeopardy - Test Site</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;padding:1rem}
+    .box{border:1px solid #ddd;padding:1rem;margin-bottom:1rem;border-radius:6px}
+    label{display:block;margin-top:.5rem}
+    button{margin:.5rem 0}
+    pre{background:#f6f6f6;padding:.5rem;border-radius:4px}
+    #results{max-height:300px;overflow:auto}
+  </style>
+</head>
+<body>
+  <h2>Test Site (separate)</h2>
+  <p>This page simulates a separate site that calls your Netlify functions. Set the function base URL depending on whether you're running Netlify Dev or using a deployed site.</p>
+
+  <div class="box">
+    <label>Functions base URL (default for Netlify Dev):</label>
+  <input id="fnBase" style="width:100%" value="https://dancing-lokum-f952d8.netlify.app/.netlify/functions" />
+  </div>
+
+  <div class="box">
+    <h3>Session</h3>
+    <button id="startBtn">Start Game (launch-game)</button>
+    <button id="endBtn" disabled>End Game (submit-result)</button>
+    <button id="showBtn" disabled>Show Results (view-result)</button>
+    <label style="margin-top:.5rem">App URL to open (optional):</label>
+  <input id="appUrl" style="width:100%" value="https://dancing-lokum-f952d8.netlify.app/index.html" />
+    <button id="openAppBtn" disabled>Open App with session (query param + postMessage)</button>
+    <div id="sessionDisplay" style="margin-top:.5rem;color:#333"></div>
+  </div>
+
+  <div class="box">
+    <h3>Result payload</h3>
+    <label>Player name: <input id="playerName" value="test-player" /></label>
+    <label>Score: <input id="score" type="number" value="1000" /></label>
+    <label>Extra metadata (JSON): <input id="metadata" value='{"note":"from test site"}' style="width:100%" /></label>
+    <div id="submitResponse"></div>
+  </div>
+
+  <div class="box">
+    <h3>Results</h3>
+    <div id="results"></div>
+  </div>
+
+  <script>
+    const startBtn = document.getElementById('startBtn');
+    const endBtn = document.getElementById('endBtn');
+    const showBtn = document.getElementById('showBtn');
+    const fnBaseInput = document.getElementById('fnBase');
+    const sessionDisplay = document.getElementById('sessionDisplay');
+    const playerName = document.getElementById('playerName');
+    const scoreInput = document.getElementById('score');
+    const metadataInput = document.getElementById('metadata');
+    const submitResponse = document.getElementById('submitResponse');
+    const resultsDiv = document.getElementById('results');
+
+    let sessionId = null;
+    function fnBase() { return fnBaseInput.value.replace(/\/$/, ''); }
+
+    startBtn.addEventListener('click', async () => {
+      sessionDisplay.textContent = 'Starting...';
+      try {
+        const res = await fetch(`${fnBase()}/launch-game`, { method: 'GET' });
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+        const json = await res.json();
+    sessionId = json.sessionId;
+    // store sessionId in localStorage for convenience (app can read it)
+    try { localStorage.setItem('testSessionId', String(sessionId)); } catch (e) { /* ignore */ }
+    // copy to clipboard for easy paste into the app if separate origin
+    try { navigator.clipboard && navigator.clipboard.writeText(String(sessionId)); } catch(e) {}
+    sessionDisplay.innerHTML = `Session: <strong>${sessionId}</strong> <br/> Game URL: <a href="${json.gameUrl}" target="_blank">${json.gameUrl}</a> <br/><small>session id copied to clipboard / saved to localStorage</small>`;
+        // set the appUrl input to the returned game URL so Open App opens the exact URL with sessionId
+        try {
+          const appUrlInput = document.getElementById('appUrl');
+          if (appUrlInput) {
+            // if the returned gameUrl already includes a sessionId, use it; otherwise append the sessionId
+            if (json.gameUrl && json.gameUrl.indexOf('sessionId=') !== -1) {
+              appUrlInput.value = json.gameUrl;
+            } else {
+              // fallback: append sessionId to the configured appUrl or to the returned URL
+              const base = (appUrlInput.value && appUrlInput.value.length) ? appUrlInput.value.replace(/\/$/, '') : window.location.origin;
+              // prefer returned gameUrl host if it looks valid
+              let pref = json.gameUrl && json.gameUrl.length ? json.gameUrl : base;
+              try {
+                const u = new URL(pref);
+                u.searchParams.set('sessionId', sessionId);
+                appUrlInput.value = u.toString();
+              } catch (e) {
+                appUrlInput.value = pref + (pref.indexOf('?') === -1 ? '?' : '&') + 'sessionId=' + encodeURIComponent(sessionId);
+              }
+            }
+          }
+        } catch(e) {}
+    endBtn.disabled = false;
+    showBtn.disabled = false;
+    submitResponse.innerHTML = '';
+    resultsDiv.innerHTML = '';
+    // enable open app button when available
+    const openAppBtn = document.getElementById('openAppBtn');
+    if (openAppBtn) openAppBtn.disabled = false;
+      } catch (err) {
+        sessionDisplay.textContent = 'Start failed: ' + err.message;
+        console.error(err);
+      }
+    });
+
+    // Open the app in a new tab/window with sessionId in the query and also postMessage the session
+    const openAppBtn = document.getElementById('openAppBtn');
+    const appUrlInput = document.getElementById('appUrl');
+    if (openAppBtn) {
+      openAppBtn.addEventListener('click', () => {
+        if (!sessionId) { alert('No session - press Start Game first'); return; }
+        const base = (appUrlInput && appUrlInput.value) ? appUrlInput.value.replace(/\/$/, '') : window.location.origin;
+        const url = base + (base.indexOf('?') === -1 ? '?' : '&') + 'sessionId=' + encodeURIComponent(sessionId);
+        const newWin = window.open(url, '_blank');
+        // try to send a postMessage as well (if same browser) - best-effort
+        setTimeout(() => {
+          try {
+            newWin && newWin.postMessage({ type: 'session', sessionId: String(sessionId) }, '*');
+          } catch (e) {
+            // ignore
+          }
+        }, 500);
+      });
+    }
+
+    endBtn.addEventListener('click', async () => {
+      if(!sessionId) { alert('No session - press Start Game first'); return; }
+      const payload = {
+        sessionId: String(sessionId),
+        playerName: playerName.value || 'player',
+        score: Number(scoreInput.value) || 0,
+      };
+      try {
+        // attempt to parse metadata JSON if provided
+        try { payload.metadata = JSON.parse(metadataInput.value); } catch(e) { payload.metadata = { raw: metadataInput.value }; }
+        submitResponse.innerHTML = 'Submitting...';
+        const res = await fetch(`${fnBase()}/submit-result`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        // Safely parse JSON (handle empty or non-JSON responses)
+        let json = null;
+        try {
+          const text = await res.text();
+          json = text ? JSON.parse(text) : null;
+        } catch (e) {
+          json = { raw: 'Non-JSON response', text: await (async () => { try { return await res.text(); } catch { return ''; } })() };
+        }
+        if(!res.ok) throw new Error((json && json.message) ? json.message : (json && json.raw) ? JSON.stringify(json) : res.statusText);
+        submitResponse.innerHTML = `<pre>${JSON.stringify(json, null, 2)}</pre>`;
+      } catch (err) {
+        submitResponse.innerHTML = 'Submit failed: ' + err.message;
+        console.error(err);
+      }
+    });
+
+    showBtn.addEventListener('click', async () => {
+      if(!sessionId) { alert('No session - press Start Game first'); return; }
+      resultsDiv.innerHTML = 'Loading...';
+      try {
+        const res = await fetch(`${fnBase()}/view-result?sessionId=${encodeURIComponent(sessionId)}`);
+        const json = await res.json();
+        if(!res.ok) throw new Error(json && json.message ? json.message : res.statusText);
+        resultsDiv.innerHTML = `<pre>${JSON.stringify(json, null, 2)}</pre>`;
+      } catch (err) {
+        resultsDiv.innerHTML = 'Fetch failed: ' + err.message;
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>

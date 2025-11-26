@@ -1,0 +1,13 @@
+{
+  "dependencies": {
+    "cors": "^2.8.5",
+    "mongodb": "^5.7.0"
+  }
+
+  ,"devDependencies": {
+    "axios": "^1.4.0"
+  },
+  "scripts": {
+    "test:api": "node ./tests/run-tests.js"
+  }
+}

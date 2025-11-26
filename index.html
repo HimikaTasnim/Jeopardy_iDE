@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Jeopardy Game</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>Custom Jeopardy Game</h1>
+  <div id="score">Score: 0</div>
+
+  
+
+  <!-- End Game / Session controls (Start is on the separate test site) -->
+  <div id="session-controls" style="margin:10px 0;">
+    <button id="end-game-btn">END GAME</button>
+  </div>
+
+  <div id="game-board"></div>
+
+  <!-- Question Screen -->
+  <div id="question-screen" style="display:none;">
+    <div>
+      
+      <button id="exit-btn">Exit</button>
+    </div>
+
+    <div id="question-text"></div>
+
+    <div>
+      <button id="reveal-answer-btn">Reveal Answer</button>
+      <button id="give-answer-btn">Give Answer</button>
+    </div>
+
+    <div id="answer-area" style="display:none;">
+      <div id="choices"></div>
+      <button id="submit-answer-btn">Submit</button>
+    </div>
+
+    <p id="feedback"></p>
+  </div>
+
+  <!-- Modal Prompt -->
+  <div id="modal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <p id="modal-message"></p>
+      <div id="modal-choices" style="margin: 10px 0;"></div>
+      <div id="modal-feedback" style="margin-top: 10px;"></div>
+      <!-- Buttons centered -->
+    <div class="modal-content-buttons">
+      <button id="modal-exit">Exit</button>
+      <button id="modal-next">Next Question</button>
+    </div>
+    </div>
+  </div>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>
