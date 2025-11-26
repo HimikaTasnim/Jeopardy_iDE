@@ -14,7 +14,7 @@ export async function handler(event, context) {
 
   // Main function logic
   const sessionId = String(Date.now());
-  const GAME_URL = process.env.GAME_URL || 'https://dancing-lokum-f952d8.netlify.app/index.html';
+  const GAME_URL = process.env.GAME_URL || 'https://beamish-beijinho-6b47ab.netlify.app/index.html';
 
   // append sessionId as a query param (preserve existing query string if any)
   let url = GAME_URL;
