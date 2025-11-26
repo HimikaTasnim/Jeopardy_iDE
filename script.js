@@ -158,6 +158,8 @@ function isLastQuestion(index) {
     return questions.every((q, i) => i === index || q.answered);
 }
 
+
+
 // ✅ Updated helper function with column-first progression logic
 function canOpenQuestion(q) {
     const row = q.points / 100;
@@ -165,9 +167,8 @@ function canOpenQuestion(q) {
     
     // Rule 1: Must complete ALL previous columns entirely before starting a new column
     for (let col = 0; col < currentCol; col++) {
-        const hasUnfinishedInPrevCol = questions.some(
-            prev => prev.category === categories[col] && !prev.answered
-        );
+        const colQuestions = questions.filter(prev => prev.category === categories[col]);
+        const hasUnfinishedInPrevCol = colQuestions.some(prev => !prev.answered);
         if (hasUnfinishedInPrevCol) return false;
     }
     
