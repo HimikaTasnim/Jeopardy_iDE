@@ -359,21 +359,25 @@ function continueToNextQuestion() {
   const currentCatIndex = categories.indexOf(currentQ.category);
   const currentRow = currentQ.points / 100;
 
-  // look for next in same category
-  for (let i = currentRow + 1; i <= 6; i++) {
+  // 1️⃣ Look for next row in SAME category
+  for (let i = currentRow + 1; i <= 5; i++) {
     const nextQ = questions.find(q =>
-      q.category === currentQ.category && q.points === i * 100 && !q.answered
+      q.category === currentQ.category &&
+      q.points === i * 100 &&
+      !q.answered
     );
     if (nextQ && canOpenQuestion(nextQ)) {
       return openQuestion(questions.indexOf(nextQ));
     }
   }
 
-  // otherwise go to next category
+  // 2️⃣ Move to next category automatically
   for (let cat = currentCatIndex + 1; cat < categories.length; cat++) {
     for (let row = 1; row <= 5; row++) {
       const nextQ = questions.find(q =>
-        q.category === categories[cat] && q.points === row * 100 && !q.answered
+        q.category === categories[cat] &&
+        q.points === row * 100 &&
+        !q.answered
       );
       if (nextQ && canOpenQuestion(nextQ)) {
         return openQuestion(questions.indexOf(nextQ));
@@ -381,9 +385,11 @@ function continueToNextQuestion() {
     }
   }
 
-  alert("No more unanswered questions!");
+  // 3️⃣ FINAL STOP: reached last question of last category
+  alert("🎉 All questions completed!");
   exitToBoard();
 }
+
 
 function exitToBoard() {
   questionScreen.style.display = "none";
@@ -421,9 +427,17 @@ modalNext.onclick = () => {
 
   } else {
     closeModal();
-    isLastQuestion(currentIndex) ? exitToBoard() : continueToNextQuestion();
-  }
-};
+
+    setTimeout(() => {
+      if (isLastQuestion(currentIndex)) {
+        exitToBoard();
+      } else {
+        continueToNextQuestion();
+      }
+    }, 50);
+
+      }
+    };
 
 revealBtn.addEventListener("click", revealAnswer);
 giveAnswerBtn.addEventListener("click", giveAnswer);
