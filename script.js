@@ -1,4 +1,3 @@
-
 const categories = [
   "Market Systems & Livelihood Goals",
   "Stakeholder & Ecosystem Mapping",
@@ -16,7 +15,6 @@ let currentIndex = null;
 let score = 0;
 let answerSubmitted = false;
 
-// serialization guards for opening questions
 let isTransitioning = false;
 const _openQueue = [];
 let _openProcessing = false;
@@ -33,12 +31,10 @@ const exitBtn = document.getElementById("exit-btn");
 const submitAnswerBtn = document.getElementById("submit-answer-btn");
 const scoreDiv = document.getElementById("score");
 
-// Session / backend function controls
 const endGameBtn = document.getElementById('end-game-btn');
 let sessionId = null;
-const FN_BASE = '/.netlify/functions'; // adjust if calling deployed endpoints
+const FN_BASE = '/.netlify/functions';
 
-// Accept sessionId from query param or from postMessage (sent by test-site)
 function getQueryParam(name) {
   try {
     const params = new URLSearchParams(window.location.search);
@@ -48,40 +44,31 @@ function getQueryParam(name) {
   }
 }
 
-// If sessionId is present in the URL (e.g. ?sessionId=...), use it automatically
 const qsSession = getQueryParam('sessionId');
 if (qsSession) {
   sessionId = String(qsSession);
   try { localStorage.setItem('testSessionId', sessionId); } catch (e) {}
 }
 
-// Listen for postMessage from a test harness (e.g. tests/test-site.html)
 window.addEventListener('message', (ev) => {
-  // Expect messages like: { type: 'session', sessionId: '...' }
   try {
     const msg = typeof ev.data === 'string' ? JSON.parse(ev.data) : ev.data;
     if (msg && msg.type === 'session' && msg.sessionId) {
       sessionId = String(msg.sessionId);
       try { localStorage.setItem('testSessionId', sessionId); } catch (e) {}
-      // optional UI element may not exist in the app; guard before writing
       const sessionInfo = document.getElementById('session-info');
       if (sessionInfo) sessionInfo.textContent = `Using session from test site: ${sessionId}`;
     }
-  } catch (e) {
-    // ignore invalid messages
-  }
+  } catch (e) {}
 }, false);
 
 async function endGame() {
-  // Ensure we pick up the sessionId from URL/hash/localStorage each time (so URL-driven sessions are used)
   function readSessionFromSources() {
-    // query param
     try {
       const params = new URLSearchParams(window.location.search);
       const q = params.get('sessionId');
       if (q) return String(q);
     } catch (e) {}
-    // hash like #sessionId=...
     try {
       if (window.location.hash && window.location.hash.includes('sessionId')) {
         const hash = window.location.hash.replace(/^#/, '');
@@ -90,15 +77,12 @@ async function endGame() {
         if (h) return String(h);
       }
     } catch (e) {}
-    // localStorage fallback
     try { const s = localStorage.getItem('testSessionId'); if (s) return String(s); } catch (e) {}
     return null;
   }
 
   const picked = readSessionFromSources();
-  if (picked) {
-    sessionId = picked;
-  }
+  if (picked) sessionId = picked;
 
   if (!sessionId) {
     const manual = prompt('No active session in this app. Paste sessionId from test site (or cancel):');
@@ -107,12 +91,8 @@ async function endGame() {
   }
 
   const playerName = prompt('Enter player name (optional):', 'player') || 'player';
-  const payload = {
-    sessionId: String(sessionId),
-    playerName,
-    score,
-    metadata: { endedAt: Date.now() }
-  };
+  const payload = { sessionId, playerName, score, metadata: { endedAt: Date.now() } };
+
   try {
     endGameBtn.disabled = true;
     const res = await fetch(`${FN_BASE}/submit-result`, {
@@ -120,7 +100,6 @@ async function endGame() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    // Safely parse JSON (handle empty or non-JSON responses)
     let json = null;
     try {
       const text = await res.text();
@@ -129,9 +108,7 @@ async function endGame() {
       try { const text = await res.text(); json = { raw: 'Non-JSON response', text }; } catch { json = { raw: 'Non-JSON response' }; }
     }
     if (!res.ok) throw new Error((json && json.message) ? json.message : (json && json.raw) ? JSON.stringify(json) : res.statusText);
-    // on success: quietly hide the end button (no popup)
     endGameBtn.style.display = 'none';
-    // keep sessionId so it's consistent with the URL during the play session
   } catch (err) {
     console.error('submit error', err);
     alert('Failed to submit result: ' + (err.message || err));
@@ -140,8 +117,8 @@ async function endGame() {
   }
 }
 
-// Wire end-game button
 if (endGameBtn) endGameBtn.addEventListener('click', endGame);
+
 const modal = document.getElementById("modal");
 const modalMsg = document.getElementById("modal-message");
 const modalChoices = document.getElementById("modal-choices");
@@ -153,28 +130,29 @@ function isLastQuestion(index) {
   return questions.every((q, i) => i === index || q.answered);
 }
 
-// ✅ New helper function to enforce rules
 function canOpenQuestion(q) {
   const row = q.points / 100;
   const currentCol = categories.indexOf(q.category);
 
-  // Rule 1: Must complete previous row in same category
   if (row > 1) {
-    const prevQ = questions.find(
-      prev => prev.category === q.category && prev.points === (row - 1) * 100
-    );
+    const prevQ = questions.find(prev => prev.category === q.category && prev.points === (row - 1) * 100);
     if (prevQ && !prevQ.answered) return false;
   }
 
-  // Rule 2: Must complete all previous categories
   for (let col = 0; col < currentCol; col++) {
-    const unfinished = questions.some(
-      prev => prev.category === categories[col] && !prev.answered
-    );
+    const unfinished = questions.some(prev => prev.category === categories[col] && !prev.answered);
     if (unfinished) return false;
   }
 
   return true;
+}
+
+function disableBoardClicks() {
+  document.querySelectorAll(".tile").forEach(tile => tile.style.pointerEvents = "none");
+}
+
+function enableBoardClicks() {
+  document.querySelectorAll(".tile").forEach(tile => tile.style.pointerEvents = "auto");
 }
 
 function buildBoard() {
@@ -209,7 +187,7 @@ function buildBoard() {
       } else {
         tile.innerText = q.points;
         tile.onclick = () => {
-          if (isTransitioning) return; // ignore clicks while transitioning
+          if (isTransitioning) return;
           if (!canOpenQuestion(q)) {
             alert("⚠️ Please complete the previous questions first.");
             return;
@@ -223,8 +201,9 @@ function buildBoard() {
   }
 }
 
-// Queue-based opener: ensure only one open runs at a time
 function openQuestion(index) {
+  disableBoardClicks(); // 🔒 disable clicks during transition
+  if (_openQueue[_openQueue.length - 1] === index) return; // prevent duplicate queue
   _openQueue.push(index);
   processOpenQueue();
 }
@@ -236,17 +215,12 @@ function processOpenQueue() {
   const run = async () => {
     while (_openQueue.length) {
       const index = _openQueue.shift();
-      // synchronous guard
       if (isTransitioning) continue;
       isTransitioning = true;
+
       try {
         const q = questions[index];
-
-        // ✅ enforce rules here too
-        if (!canOpenQuestion(q)) {
-          // skip opening this queued item if rules prevent it
-          continue;
-        }
+        if (!canOpenQuestion(q)) continue;
 
         currentIndex = index;
         questionText.innerText = q.q;
@@ -273,8 +247,8 @@ function processOpenQueue() {
         giveAnswerBtn.disabled = false;
         exitBtn.disabled = false;
         submitAnswerBtn.disabled = false;
+
       } finally {
-        // small async delay to let the DOM settle before next open
         await new Promise(r => setTimeout(r, 30));
         isTransitioning = false;
       }
@@ -294,14 +268,9 @@ function revealAnswer() {
 
   modal.dataset.action = "reveal";
 
-  if (isLastQuestion(currentIndex)) {
-    modalNext.style.display = "none";
-    modalExit.style.display = "inline-block";
-  } else {
-    modalNext.style.display = "inline-block";
-    modalExit.style.display = "inline-block";
-    modalNext.innerText = "Next Question";
-  }
+  modalNext.style.display = isLastQuestion(currentIndex) ? "none" : "inline-block";
+  modalExit.style.display = "inline-block";
+  modalNext.innerText = "Next Question";
 
   openModal();
   updateScore(0);
@@ -338,20 +307,17 @@ function giveAnswer() {
   openModal();
 }
 
-function openModal() {
-  modal.style.display = "flex";
+function openModal() { modal.style.display = "flex"; }
+function closeModal() { 
+  modal.style.display = "none"; 
+  modalFeedback.innerText = ""; 
+  modalChoices.innerHTML = ""; 
+  delete modal.dataset.action; 
 }
 
-function closeModal() {
-  modal.style.display = "none";
-  modalFeedback.innerText = "";
-  modalChoices.innerHTML = "";
-  delete modal.dataset.action;
-}
-
-function updateScore(pointsToAdd) {
-  score += pointsToAdd;
-  scoreDiv.innerText = `Score: ${score}`;
+function updateScore(pointsToAdd) { 
+  score += pointsToAdd; 
+  scoreDiv.innerText = `Score: ${score}`; 
 }
 
 function continueToNextQuestion() {
@@ -359,42 +325,27 @@ function continueToNextQuestion() {
   const currentCatIndex = categories.indexOf(currentQ.category);
   const currentRow = currentQ.points / 100;
 
-  // 1️⃣ Look for next row in SAME category
   for (let i = currentRow + 1; i <= 5; i++) {
-    const nextQ = questions.find(q =>
-      q.category === currentQ.category &&
-      q.points === i * 100 &&
-      !q.answered
-    );
-    if (nextQ && canOpenQuestion(nextQ)) {
-      return openQuestion(questions.indexOf(nextQ));
-    }
+    const nextQ = questions.find(q => q.category === currentQ.category && q.points === i * 100 && !q.answered);
+    if (nextQ && canOpenQuestion(nextQ)) return openQuestion(questions.indexOf(nextQ));
   }
 
-  // 2️⃣ Move to next category automatically
   for (let cat = currentCatIndex + 1; cat < categories.length; cat++) {
     for (let row = 1; row <= 5; row++) {
-      const nextQ = questions.find(q =>
-        q.category === categories[cat] &&
-        q.points === row * 100 &&
-        !q.answered
-      );
-      if (nextQ && canOpenQuestion(nextQ)) {
-        return openQuestion(questions.indexOf(nextQ));
-      }
+      const nextQ = questions.find(q => q.category === categories[cat] && q.points === row * 100 && !q.answered);
+      if (nextQ && canOpenQuestion(nextQ)) return openQuestion(questions.indexOf(nextQ));
     }
   }
 
-  // 3️⃣ FINAL STOP: reached last question of last category
   alert("🎉 All questions completed!");
   exitToBoard();
 }
-
 
 function exitToBoard() {
   questionScreen.style.display = "none";
   board.style.display = "grid";
   buildBoard();
+  enableBoardClicks(); // re-enable clicks after board is back
 }
 
 modalNext.onclick = () => {
@@ -429,23 +380,16 @@ modalNext.onclick = () => {
     closeModal();
 
     setTimeout(() => {
-      if (isLastQuestion(currentIndex)) {
-        exitToBoard();
-      } else {
-        continueToNextQuestion();
-      }
+      if (isLastQuestion(currentIndex)) exitToBoard();
+      else continueToNextQuestion();
     }, 50);
-
-      }
-    };
+  }
+};
 
 revealBtn.addEventListener("click", revealAnswer);
 giveAnswerBtn.addEventListener("click", giveAnswer);
 submitAnswerBtn.addEventListener("click", () => {});
 exitBtn.addEventListener("click", exitToBoard);
-modalExit.addEventListener("click", () => {
-  closeModal();
-  exitToBoard();
-});
+modalExit.addEventListener("click", () => { closeModal(); exitToBoard(); });
 
 buildBoard();
