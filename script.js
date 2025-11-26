@@ -1,12 +1,12 @@
 const categories = [
     "Market Systems & Livelihood Goals",
-    "Stakeholder & Ecosystem Mapping", 
-    "Market Enablers & Service Delivery",
-    "Value Chain Analysis & Product Development",
-    "Systemic Change & Impact Measurement",
-    "Business Development & Entrepreneurial Thinking",
-    "Developing Market Linkages & Inclusive Value Chains",
-    "Monitoring & Adaptive Management"
+    "Climate Change & Environmental Context", 
+    "Gender & Social Inclusion",
+    "Private Sector Engagement",
+    "Refugee–Host Community Dynamics",
+    "Policies & Governance",
+    "Sustainability & Systemic Change",
+    "Value Chain & Market Actors"
 ];
 
 import questions from './questionData.js';
@@ -155,54 +155,101 @@ const modalExit = document.getElementById("modal-exit");
 const modalNext = document.getElementById("modal-next");
 
 function isLastQuestion(index) {
-    return questions.every((q, i) => i === index || q.answered);
+    // Check if this is the last unanswered question in the entire game
+    const unansweredQuestions = questions.filter(q => !q.answered);
+    return unansweredQuestions.length === 1 && unansweredQuestions[0] === questions[index];
 }
 
 
 
-// ✅ Updated helper function with column-first progression logic
+
+function getNextSequentialQuestion() {
+    console.log("getNextSequentialQuestion: Looking for next question...");
+    console.log("All questions:", questions.map(q => ({ id: q.id, category: q.category, answered: q.answered })));
+    
+    // Outer loop: columns (categories) - complete each column entirely
+    for (let col = 0; col < categories.length; col++) {
+        const currentCategory = categories[col];
+        console.log(`  Checking column ${col}: "${currentCategory}"`);
+        
+        // Get all questions in this column
+        const colQuestions = questions.filter(q => {
+            const matches = q.category === currentCategory;
+            console.log(`    Question ${q.id}: category="${q.category}", matches=${matches}`);
+            return matches;
+        });
+        
+        console.log(`  Questions in column ${col}:`, colQuestions.map(q => ({ id: q.id, answered: q.answered })));
+        
+        // Check if this column has any unanswered questions
+        const hasUnanswered = colQuestions.some(q => !q.answered);
+        
+        if (hasUnanswered) {
+            console.log(`  Column ${col} has unanswered questions`);
+            
+            // Inner loop: rows (1-5 within this column)
+            for (let row = 1; row <= 5; row++) {
+                const nextQ = questions.find(q => 
+                    q.category === currentCategory && 
+                    q.points === row * 100 && 
+                    !q.answered
+                );
+                
+                if (nextQ) {
+                    console.log(`  Found candidate: ${nextQ.id}, canOpen: ${canOpenQuestion(nextQ)}`);
+                    if (canOpenQuestion(nextQ)) {
+                        return nextQ;
+                    }
+                }
+            }
+            console.log(`  No available questions in column ${col} that can be opened yet`);
+        } else {
+            console.log(`  Column ${col} is complete`);
+        }
+    }
+    
+    console.log("  No more questions available");
+    return null;
+}
+
+// Also update the canOpenQuestion function to be more specific
 function canOpenQuestion(q) {
     const row = q.points / 100;
     const currentCol = categories.indexOf(q.category);
     
-    // Rule 1: Must complete ALL previous columns entirely before starting a new column
-    for (let col = 0; col < currentCol; col++) {
-        const colQuestions = questions.filter(prev => prev.category === categories[col]);
-        const hasUnfinishedInPrevCol = colQuestions.some(prev => !prev.answered);
-        if (hasUnfinishedInPrevCol) return false;
-    }
+    console.log(`  canOpenQuestion: Checking ${q.id} (category: "${q.category}", col: ${currentCol}, row: ${row})`);
     
-    // Rule 2: Within current column, must complete questions sequentially (Q1, Q2, Q3, Q4, Q5)
+    // Rule 1: Check if all previous questions in this column are answered
     if (row > 1) {
-        const prevRowQ = questions.find(
-            prev => prev.category === q.category && prev.points === (row - 1) * 100
-        );
-        if (prevRowQ && !prevRowQ.answered) return false;
-    }
-    
-    return true;
-}
-
-// ✅ Updated function to get the next question in strict column-first, row-second order
-function getNextSequentialQuestion() {
-    // Outer loop: columns (categories) - complete each column entirely
-    for (let col = 0; col < categories.length; col++) {
-        // Inner loop: rows (1-5 within each column)
-        for (let row = 1; row <= 5; row++) {
-            const nextQ = questions.find(q => 
-                q.category === categories[col] && 
-                q.points === row * 100 && 
-                !q.answered
+        for (let r = 1; r < row; r++) {
+            const prevQ = questions.find(prev => 
+                prev.category === q.category && 
+                prev.points === r * 100
             );
-            if (nextQ && canOpenQuestion(nextQ)) {
-                return nextQ;
+            if (prevQ && !prevQ.answered) {
+                console.log(`    ❌ Previous question ${prevQ.id} in same column not answered`);
+                return false;
             }
         }
     }
-    return null; // No more questions available
+    
+    // Rule 2: Check if all previous columns are completed
+    for (let col = 0; col < currentCol; col++) {
+        const prevCategory = categories[col];
+        const colQuestions = questions.filter(prev => prev.category === prevCategory);
+        const colComplete = colQuestions.every(prev => prev.answered);
+        
+        console.log(`    Checking column ${col} ("${prevCategory}"): complete=${colComplete}, questions=${colQuestions.length}`);
+        
+        if (!colComplete) {
+            console.log(`    ❌ Column ${col} not completed`);
+            return false;
+        }
+    }
+    
+    console.log(`    ✅ Question can be opened`);
+    return true;
 }
-
-// ✅ Updated buildBoard with column-first progression
 function buildBoard() {
     board.innerHTML = "";
     
@@ -216,7 +263,8 @@ function buildBoard() {
 
     // Find the next question that should be available
     const nextAvailableQ = getNextSequentialQuestion();
-    
+    console.log("Next available question:", nextAvailableQ ? nextAvailableQ.id : "None");
+
     // Build the grid (display still needs row-first for visual layout)
     for (let row = 1; row <= 5; row++) {
         for (let col = 0; col < categories.length; col++) {
@@ -240,6 +288,7 @@ function buildBoard() {
                 }
             } else if (nextAvailableQ && q.id === nextAvailableQ.id) {
                 // This is the next question that should be opened
+                console.log(`Making tile ${q.id} clickable (next available)`);
                 tile.innerText = q.points;
                 tile.style.backgroundColor = "#4CAF50";
                 tile.style.cursor = "pointer";
@@ -249,6 +298,7 @@ function buildBoard() {
                 };
             } else {
                 // Question not yet available
+                console.log(`Making tile ${q.id} locked`);
                 tile.innerText = q.points;
                 tile.classList.add("locked");
                 tile.style.backgroundColor = "#333";
