@@ -341,12 +341,16 @@ function continueToNextQuestion() {
   exitToBoard();
 }
 
-function exitToBoard() {
+function showEndScreen() {
+  // Hide everything else
   questionScreen.style.display = "none";
-  board.style.display = "grid";
-  buildBoard();
-  enableBoardClicks(); // re-enable clicks after board is back
+  board.style.display = "none";
+
+  // Show the end screen
+  const endScreen = document.getElementById('end-screen');
+  endScreen.style.display = "block";
 }
+
 
 modalNext.onclick = () => {
   const q = questions[currentIndex];
@@ -380,7 +384,7 @@ modalNext.onclick = () => {
     closeModal();
 
     setTimeout(() => {
-      if (isLastQuestion(currentIndex)) exitToBoard();
+      if (isLastQuestion(currentIndex)) showEndScreen();
       else continueToNextQuestion();
     }, 50);
   }
